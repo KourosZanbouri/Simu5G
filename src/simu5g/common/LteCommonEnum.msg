@@ -169,7 +169,13 @@ enum DeploymentScenario
     URBAN_MACROCELL = 2;
     RURAL_MACROCELL = 3;
     SUBURBAN_MACROCELL = 4;
-    UNKNOW_SCENARIO = 5;
+	// added by Kouros
+    INDOOR_FACTORY_SL = 5; // Sparse clutter, Low BS
+    INDOOR_FACTORY_DL = 6; // Dense clutter, Low BS
+    INDOOR_FACTORY_SH = 7; // Sparse clutter, High BS
+    INDOOR_FACTORY_DH = 8; // Dense clutter, High BS
+    INDOOR_FACTORY_HH = 9; // Add this new line
+    UNKNOW_SCENARIO = 10;
 };
 
 

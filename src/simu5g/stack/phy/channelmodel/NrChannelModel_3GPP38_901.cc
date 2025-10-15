@@ -20,6 +20,13 @@ void NrChannelModel_3GPP38_901::initialize(int stage)
     NrChannelModel::initialize(stage);
     if (inside_building_)
         useBuildingPenetrationHighLossModel_ = par("useBuildingPenetrationHighLossModel").boolValue();
+
+    // ADDED BY KOUROS
+    // Initialize configurable InF parameters
+    d_clutter_ = par("d_clutter").doubleValue();
+    clutter_density_r_ = par("clutter_density_r").doubleValue();
+    hClutter_ = par("hClutter").doubleValue();
+    ceilingHeight_ = par("ceilingHeight").doubleValue();
 }
 
 void NrChannelModel_3GPP38_901::computeLosProbability(double d, MacNodeId nodeId)
@@ -59,6 +66,34 @@ void NrChannelModel_3GPP38_901::computeLosProbability(double d, MacNodeId nodeId
             else
                 p = exp(-1 * (d - 49.0) / 211.7);
             break;
+
+            // Added by Kouros
+        case INDOOR_FACTORY_SL:
+        case INDOOR_FACTORY_DL:
+        case INDOOR_FACTORY_SH:
+        case INDOOR_FACTORY_DH:
+        case INDOOR_FACTORY_HH:
+        {
+            double k_subsce = 0;
+            if (scenario_ == INDOOR_FACTORY_HH) {
+                p = 1.0;
+            } else {
+                if (scenario_ == INDOOR_FACTORY_SL || scenario_ == INDOOR_FACTORY_DL)
+                {
+                    // Formula for low BS height
+                    k_subsce = -d_clutter_ / log(1 - clutter_density_r_);
+                }
+                else // High BS height (SH, DH)
+                {
+                    // Formula for high BS height
+                    k_subsce = -(d_clutter_ * (hNodeB_ - hUe_)) / (log(1 - clutter_density_r_) * (hClutter_ - hUe_));
+                }
+                if (k_subsce > 0)
+                    p = exp(-d / k_subsce);
+            }
+            break;
+        }
+
         default:
             NrChannelModel::computeLosProbability(d, nodeId);
             return;
@@ -109,6 +144,13 @@ double NrChannelModel_3GPP38_901::computePathLoss(double threeDimDistance, doubl
             break;
         case RURAL_MACROCELL:
             pathLoss = computeRuralMacro(threeDimDistance, twoDimDistance, los);
+            break;
+        // Added By Kouros
+        case INDOOR_FACTORY_SL:
+        case INDOOR_FACTORY_DL:
+        case INDOOR_FACTORY_SH:
+        case INDOOR_FACTORY_DH:
+            pathLoss = computeIndoorFactory(threeDimDistance, los);
             break;
         default:
             return NrChannelModel::computePathLoss(twoDimDistance, 0.0, los);
@@ -294,6 +336,50 @@ double NrChannelModel_3GPP38_901::computeIndoor(double threeDimDistance, double 
     return pLoss;
 }
 
+
+double NrChannelModel_3GPP38_901::computeIndoorFactory(double threeDimDistance, bool los)
+{
+    if (threeDimDistance < 1)
+        threeDimDistance = 1;
+    // Corrected based on recent 3GPP TR 38.901 updates
+    // InF model is valid for d_3D up to 600m
+    if (threeDimDistance > 600 && !tolerateMaxDistViolation_)
+        throw cRuntimeError("Error: Indoor Factory path loss model is valid for d<600m only Received distance: %g", threeDimDistance);
+    // Compute penetration loss (optional, can be added if UEs are inside machinery, etc.)
+    double penetrationLoss = 0.0;
+    // if (inside_building_)  // This model is already "inside", but you could model inner walls
+    //     penetrationLoss = computePenetrationLoss(threeDimDistance);
+    double pLoss = 0.0;
+    // CORRECT PLACEMENT: Declare and calculate pLoss_los here, in the outer scope.
+    double pLoss_los = 31.84 + 21.5 * log10(threeDimDistance) + 19.0 * log10CarrierFrequencyGHz_;
+    if (los) {
+        // Now you can safely use pLoss_los here.
+        pLoss = pLoss_los;
+    } else { // NLOS cases
+        double pLoss_nlos = 0.0;
+        switch (scenario_) {
+            case INDOOR_FACTORY_SL:
+                pLoss_nlos = 33.0 + 25.5 * log10(threeDimDistance) + 20.0 * log10CarrierFrequencyGHz_;
+                break;
+            case INDOOR_FACTORY_DL:
+                pLoss_nlos = 18.6 + 35.7 * log10(threeDimDistance) + 20.0 * log10CarrierFrequencyGHz_;
+                break;
+            case INDOOR_FACTORY_SH:
+                pLoss_nlos = 32.4 + 23.0 * log10(threeDimDistance) + 20.0 * log10CarrierFrequencyGHz_;
+                break;
+            case INDOOR_FACTORY_DH:
+                pLoss_nlos = 33.63 + 21.9 * log10(threeDimDistance) + 20.0 * log10CarrierFrequencyGHz_;
+                break;
+            default:
+                throw cRuntimeError("Unhandled Indoor Factory scenario in computeIndoorFactory");
+        }
+        // Per the standard, the final NLOS path loss is the maximum of the NLOS and LOS path loss values
+        pLoss = std::max(pLoss_los, pLoss_nlos);
+    }
+    return pLoss;
+}
+
+
 double NrChannelModel_3GPP38_901::getStdDev(bool dist, MacNodeId nodeId)
 {
     switch (scenario_) {
@@ -321,6 +407,31 @@ double NrChannelModel_3GPP38_901::getStdDev(bool dist, MacNodeId nodeId)
             }
             else
                 return 8.;
+
+            // Added By Kouros
+        case INDOOR_FACTORY_SL:
+        case INDOOR_FACTORY_DL:
+        case INDOOR_FACTORY_SH:
+        case INDOOR_FACTORY_DH:
+            if (losMap_[nodeId]) {
+                // For all InF scenarios, the LOS shadow fading std is 4.0 dB
+                return 4.0;
+            } else {
+                // For NLOS, the value depends on the specific InF sub-scenario
+                switch (scenario_) {
+                    case INDOOR_FACTORY_SL:
+                        return 5.7;
+                    case INDOOR_FACTORY_DL:
+                        return 7.2;
+                    case INDOOR_FACTORY_SH:
+                        return 5.9;
+                    case INDOOR_FACTORY_DH:
+                        return 4.0; // The 3GPP value is 4.0 dB for DH-NLOS
+                    default:
+                        throw cRuntimeError("Unhandled InF NLOS scenario in getStdDev");
+                }
+            }
+            break;
         default:
             throw cRuntimeError("Wrong path-loss scenario value %d", scenario_);
     }

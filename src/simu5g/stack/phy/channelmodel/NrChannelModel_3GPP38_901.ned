@@ -26,4 +26,10 @@ simple NrChannelModel_3GPP38_901 extends NrChannelModel
         @class("NrChannelModel_3GPP38_901");
 
         bool useBuildingPenetrationLossHighLossModel = default(false);
+        
+        // Added By Kouros -  configurable InF parameters
+        double d_clutter @unit(m) = default(10m);
+        double clutter_density_r = default(0.9);
+        double hClutter @unit(m) = default(1.0m);
+        double ceilingHeight @unit(m) = default(10m);
 }

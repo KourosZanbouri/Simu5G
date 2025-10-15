@@ -30,7 +30,7 @@ simple LteRealisticChannelModel extends LteChannelModel
         bool shadowing = default(true);
 
         // Pathloss scenario from ITU -->
-        string scenario @enum(INDOOR_HOTSPOT,URBAN_MICROCELL,URBAN_MACROCELL,RURAL_MACROCELL,SUBURBAN_MACROCELL,UNKNOW_SCENARIO) = default("URBAN_MACROCELL");
+        string scenario @enum(INDOOR_HOTSPOT,URBAN_MICROCELL,URBAN_MACROCELL,RURAL_MACROCELL,SUBURBAN_MACROCELL,INDOOR_FACTORY_SL,INDOOR_FACTORY_DL,INDOOR_FACTORY_SH,INDOOR_FACTORY_DH,INDOOR_FACTORY_HH,UNKNOW_SCENARIO) = default("URBAN_MACROCELL");
 
         // eNodeB height -->
         double nodebHeight @unit(m) = default(25m);

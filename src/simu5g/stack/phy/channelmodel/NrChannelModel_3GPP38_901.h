@@ -23,12 +23,15 @@ namespace simu5g {
  * - 3GPP TS 38.211, "NR; Physical channels and modulation", v16.2.0, July 2020
  * - 3GPP TS 38.214, "NR; Physical layer procedures for data", v16.2.0, July 2020
  *
+ * - (Modified By Kouros Zanbouri) 3GPP TR 38.901, "Study on channel model for frequencies from 0.5 to 100 GHz", v16.1.0, December 2019
+ * 
  * The model supports 5G NR deployment scenarios including:
  * - Indoor Hotspot (InH) - 0.5-100 GHz
  * - Urban Microcell (UMi-Street Canyon) - 0.5-100 GHz
  * - Urban Macrocell (UMa) - 0.5-100 GHz
  * - Rural Macrocell (RMa) - 0.5-7 GHz
  *
+ * - (Modified By Kouros Zanbouri) Indoor Factory profiles (InF)
  * Key features:
  * - Frequency-dependent path loss models compliant with 3GPP TR 38.901
  * - LOS/NLOS probability models for various scenarios
@@ -38,6 +41,16 @@ namespace simu5g {
 class NrChannelModel_3GPP38_901 : public NrChannelModel
 {
 
+      // ADDED BY KOUROS
+  protected:
+    // Parameters for InF LOS Probability Model
+    double d_clutter_;
+    double clutter_density_r_;
+    double hClutter_;
+    double ceilingHeight_;
+    /////
+
+    
   public:
     void initialize(int stage) override;
 
@@ -114,6 +127,14 @@ class NrChannelModel_3GPP38_901 : public NrChannelModel
      * @param speed speed of UE
      */
     double computeShadowing(double sqrDistance, MacNodeId nodeId, double speed, bool cqiDl) override;
+
+    /*
+     * InF path loss model (taken from TR 38.901)
+     * Added By Kouros
+     * @param threeDimDistance distance between UE and gNodeB
+     * @param los line-of-sight flag
+     */
+    double computeIndoorFactory(double threeDimDistance, bool los);
 
 };
 
