@@ -111,7 +111,8 @@ enum SchedDiscipline
     MAXCI_COMP = 5;
     ALLOCATOR_BESTFIT = 6;
     QOS_PF = 7;
-    UNKNOWN_DISCIPLINE = 8;
+    LYAPUNOV_SCHEDULER = 8;
+    UNKNOWN_DISCIPLINE = 9;
 
 };
 

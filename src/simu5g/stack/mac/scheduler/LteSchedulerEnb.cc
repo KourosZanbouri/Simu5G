@@ -22,7 +22,7 @@
 #include "simu5g/stack/mac/scheduling_modules/LteMaxCiComp.h"
 #include "simu5g/stack/mac/scheduling_modules/LteAllocatorBestFit.h"
 #include "simu5g/stack/mac/scheduling_modules/QoSAwareScheduler.h"
-#include "simu5g/mac/scheduling_modules/LyapunovScheduler.h"
+#include "simu5g/stack/mac/scheduling_modules/LyapunovScheduler.h"
 #include "simu5g/stack/mac/buffer/LteMacBuffer.h"
 #include "simu5g/stack/mac/buffer/LteMacQueue.h"
 #include "simu5g/stack/phy/LtePhyBase.h"
