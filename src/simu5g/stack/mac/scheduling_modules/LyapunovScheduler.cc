@@ -1,4 +1,3 @@
-
 /*
  * LyapunovScheduler.cc
  *
@@ -9,12 +8,11 @@
 #include "simu5g/stack/mac/scheduler/LteSchedulerEnb.h"
 #include "simu5g/stack/mac/LteMacEnb.h"
 #include "simu5g/stack/mac/buffer/LteMacBuffer.h"
+#include <cmath> // For pow()
 
 namespace simu5g {
 
 using namespace omnetpp;
-
-
 
 // Constructor saves alpha and beta using an initializer list
 LyapunovScheduler::LyapunovScheduler(Binder* binder, double lyAlpha, double lyBeta)
@@ -36,26 +34,16 @@ void LyapunovScheduler::loadContextIfNeeded()
 
 double LyapunovScheduler::computeQosWeightFromContext(const QfiContext& ctx)
 {
-    // Base weight for all flows
     double weight = 1.0;
-
-    // --- Exponential Priority Scaling ---
-    // Use a base value greater than 1. A higher base creates more separation.
     const double priorityBase = 2.0;
-    // Lower priorityLevel is better (e.g., 1 is higher priority than 9).
-    // This creates an exponential gap: level 1 gets 2^8, level 9 gets 2^0.
     weight *= pow(priorityBase, 9 - ctx.priorityLevel);
 
-    // --- Delay Budget Scaling ---
-    // Extremely aggressive bonus for tight delay budgets (URLLC-like)
     if (ctx.delayBudgetMs <= 10) {
         weight *= 10.0;
     } else if (ctx.delayBudgetMs <= 50) {
         weight *= 3.0;
     }
 
-    // --- GBR Bonus ---
-    // Provide a significant, constant multiplier for guaranteed bit rate flows.
     if (ctx.isGbr) {
         weight *= 2.0;
     }
@@ -74,50 +62,51 @@ const QfiContext* LyapunovScheduler::getQfiContextForCid(MacCid cid)
         EV_WARN << "LyapunovScheduler: No QFI registered for CID " << cid << "\n";
         return nullptr;
     }
-    return qfiContextMgr_ -> getContextByQfi(qfi);
+    return qfiContextMgr_->getContextByQfi(qfi);
 }
-
-
-
-struct SchedulingInfo {
-    MacCid cid;
-    const QfiContext* qfiContext;
-    double queueBacklog;
-    double achievableRate; // in bytes per resource block
-};
 
 void LyapunovScheduler::prepareSchedule()
 {
     EV << NOW << " HybridLyapunovScheduler::prepareSchedule" << endl;
 
-    const LteMacBufferMap* virtualBuffers = (direction_ == UL) ? eNbScheduler_->mac_->getBsrVirtualBuffers() : nullptr;
     grantedBytes_.clear();
     activeConnectionTempSet_ = *activeConnectionSet_;
 
-    // --- Unified priority queue for all traffic ---
     auto compare = [](const ScoredCid& a, const ScoredCid& b) { return a.second < b.second; };
     std::priority_queue<ScoredCid, std::vector<ScoredCid>, decltype(compare)> scoreQueue(compare);
 
-    // --- Single Pass Data Gathering and Scoring ---
     for (const auto& cid : carrierActiveConnectionSet_)
     {
-        MacNodeId nodeId = MacCidToNodeId(cid);
-        if (nodeId == NODEID_NONE || binder_->getOmnetId(nodeId) == 0) continue;
+        // CHANGE: MacCidToNodeId() is replaced with cid.getNodeId()
+        MacNodeId nodeId = cid.getNodeId();
+        // CHANGE: binder_->getOmnetId() check is removed as it's no longer available
+        if (nodeId == NODEID_NONE) continue;
 
         double backlog = 0;
         Direction dir = (direction_ == UL) ? UL : DL;
 
+        // --- START OF UPDATED BACKLOG LOGIC ---
         if (dir == DL) {
-            backlog = eNbScheduler_->mac_->getDlQueueSize(cid);
+            // CHANGE: getDlQueueSize() is replaced with getMacBuffer()
+            LteMacBuffer* dlBuffer = eNbScheduler_->mac_->getMacBuffer(cid);
+            if (dlBuffer != nullptr) {
+                backlog = dlBuffer->getQueueOccupancy();
+            }
         } else { // Uplink
-            if (virtualBuffers && virtualBuffers->count(cid) > 0) {
-                backlog = virtualBuffers->at(cid)->getQueueOccupancy();
+            // CHANGE: getBsrVirtualBuffers() is replaced with getBsrVirtualBuffer()
+            LteMacBuffer* ulBuffer = eNbScheduler_->mac_->getBsrVirtualBuffer(cid);
+            if (ulBuffer != nullptr) {
+                backlog = ulBuffer->getQueueOccupancy();
             }
         }
+        // --- END OF UPDATED BACKLOG LOGIC ---
+
         if (backlog == 0) continue;
 
         const UserTxParams& info = eNbScheduler_->mac_->getAmc()->computeTxParams(nodeId, dir, carrierFrequency_);
-        if (info.readCqiVector().empty() || info.readBands().empty()) continue;
+        if (info.readCqiVector().empty() || info.readBands().empty() || eNbScheduler_->allocatedCws(nodeId) == info.getLayers().size()) {
+            continue;
+        }
 
         unsigned int availableBlocks = 0, availableBytes = 0;
         for (auto antenna : info.readAntennaSet()) {
@@ -133,10 +122,8 @@ void LyapunovScheduler::prepareSchedule()
         const QfiContext* ctx = getQfiContextForCid(cid);
         double qosWeight = ctx ? computeQosWeightFromContext(*ctx) : 1.0;
 
-        // --- Score calculation with tuning exponents ---
         double score = pow(backlog, lyAlpha_) * achievableRate * pow(qosWeight, lyBeta_);
 
-        // --- Correct Strict Priority logic using a massive score bonus ---
         if (ctx && ctx->qfi == 4) { // QFI 4 for URLLC
             score *= 1e12;
         }
@@ -152,7 +139,6 @@ void LyapunovScheduler::prepareSchedule()
         scoreQueue.push({cid, score});
     }
 
-    // --- Unified Granting Loop ---
     while (!scoreQueue.empty())
     {
         ScoredCid current = scoreQueue.top();
