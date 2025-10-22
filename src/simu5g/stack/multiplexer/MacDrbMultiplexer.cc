@@ -29,8 +29,21 @@ void MacDrbMultiplexer::handleMessage(cMessage *msg)
         auto lteInfo = pkt->getTag<FlowControlInfo>();
         int drbIndex = lteInfo->getLcid();  // Assuming LCID == DRB index
         int numDrbs = gateSize("rlcOut");
-        if (drbIndex < 0 || drbIndex >= numDrbs)
-            throw cRuntimeError("Invalid DRB index %d", drbIndex);
+
+        //if (drbIndex < 0 || drbIndex >= numDrbs)
+        //    throw cRuntimeError("Invalid DRB index %d", drbIndex);
+
+        if (drbIndex < 0 || drbIndex >= numDrbs) {
+                EV_WARN << "MacDrbMultiplexer: Invalid DRB index detected! "
+                        << "drbIndex=" << drbIndex
+                        << " (valid range: 0.." << numDrbs - 1 << "), "
+                        << "LCID=" << lteInfo->getLcid()
+                        << ". Packet will be dropped." << endl;
+
+                delete pkt;  // Prevent memory leak
+                return;      // Bypass this instance, continue simulation
+            }
+
         send(pkt, "rlcOut", drbIndex);
     }
     else {

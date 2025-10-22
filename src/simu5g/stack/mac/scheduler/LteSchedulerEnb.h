@@ -48,6 +48,7 @@ class LteSchedulerEnb
     friend class LteMaxCiComp;
     friend class LteAllocatorBestFit;
     friend class QoSAwareScheduler;
+    friend class LyapunovScheduler;
 
   protected:
 
