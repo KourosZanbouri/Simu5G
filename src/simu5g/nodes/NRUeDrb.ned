@@ -1,19 +1,24 @@
 //
-//                  Simu5G
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Lesser General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
 //
-// Authors: Mohamed Seliem (University College Cork)
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Lesser General Public License for more details.
 //
-// This file is part of a software released under the license included in file
-// "license.pdf". Please read LICENSE and README files before using it.
-// The above files and the present reference are part of the software itself,
-// and cannot be removed from it.
+// You should have received a copy of the GNU Lesser General Public License
+// along with this program.  If not, see http://www.gnu.org/licenses/.
 //
 
 
 package simu5g.nodes;
 
-import simu5g.corenetwork.statsCollector.NRueStatsCollector;
-import simu5g.nodes.Ue;
+import simu5g.corenetwork.statsCollector.NrUeStatsCollector;
+import simu5g.nodes.NrUe;
+import inet.common.MessageDispatcher;
 
 //
 // This module implements a User Equipment (UE) for a 5G LTE network. It extends the ~Ue module
@@ -24,4 +29,36 @@ module NRUeDrb extends NrUe
 {
     parameters:
         cellularNic.typename = default("NRNicUeDrb");
+    submodules:
+        //# message dispatcher for SAP to link layer
+        bi: MessageDispatcher {
+            parameters:
+                @display("p=329.2,506.9;b=219.2,6.9,,,,1");
+        }
+        tsntt: TSNTT {
+            @display("p=333.8,474.6;is=m");
+        }
+	    connections allowunconnected:
+
+        ipv4.ifIn <-- nl.out++ if hasIpv4;
+        ipv4.ifOut --> nl.in++ if hasIpv4;
+
+
+        cellularNic.upperLayerOut --> bi.in++;
+        cellularNic.upperLayerIn <-- bi.out++;
+
+        tsntt.stackOut --> bi.in++;
+        tsntt.stackIn <-- bi.out++;
+        tsntt.stackOut --> nl.in++;
+        tsntt.stackIn <-- nl.out++;
+
+        if numEthInterfaces > 0 {
+    eth[0].upperLayerOut --> bi.in++;     // L2 Frame -> TSNTT
+    eth[0].upperLayerIn <-- bi.out++;    // L2 Frame <- TSNTT
+}
+        tsntt.tsnOut --> bi.in++;
+        tsntt.tsnIn <-- bi.out++;
+        tsntt.tsnOut --> nl.in++;
+        tsntt.tsnIn <-- nl.out++;
+
 }
