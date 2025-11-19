@@ -55,7 +55,7 @@ class TSNTT : public cSimpleModule
     /**
      * @brief Handles L3 packets from the 5G stack (stackIn).
      *
-     * Reads QFI (from QosInd), maps to PCP, finds dest MAC, adds L2 headers,
+     * Reads QFI , maps to PCP, finds dest MAC, adds L2 headers,
      * and sends to the wired TSN network (tsnOut).
      */
     virtual void handlePacketFromStack(Packet *pkt);
@@ -71,18 +71,17 @@ class TSNTT : public cSimpleModule
     virtual int getPcpFromPacket(Packet *pkt);
 
     /**
-     * @brief Maps a QFI (int) to a PCP (int) using globalData.
+     * @brief Maps a QFI (int) to a PCP (int) .
      */
     virtual int convertQfiToPcp(int qfi);
 
     /**
-     * @brief Maps a PCP (int) to a QFI (int) using globalData.
+     * @brief Maps a PCP (int) to a QFI (int).
      */
     virtual int convertPcpToQfi(int pcp);
 
     /**
      * @brief Looks up the destination MAC address for a given IP address.
-     * Uses the globalData UeEthInterfaceMapping.
      */
     virtual MacAddress resolveMacAddress(const L3Address& destIp);
 
