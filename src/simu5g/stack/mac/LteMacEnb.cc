@@ -37,6 +37,15 @@
 #include "simu5g/stack/rlc/um/LteRlcUm.h"
 #include "simu5g/stack/pdcp/NrPdcpEnb.h"
 
+/// ADDED BY KOUROS
+#include "simu5g/x2/packet/LteX2Message_m.h"
+#include "simu5g/x2/packet/X2InformationElement_m.h"
+#include "simu5g/x2/packet/X2ControlInfo_m.h"
+#include "inet/common/packet/Packet.h"
+#include "simu5g/stack/mac/scheduling_modules/LyapunovScheduler.h"
+#include "inet/common/packet/Packet.h"
+#include "inet/common/packet/chunk/Chunk.h" // Needed for makeShared
+
 namespace simu5g {
 
 Define_Module(LteMacEnb);
@@ -135,6 +144,26 @@ void LteMacEnb::initialize(int stage)
         eNodeBCount = par("eNodeBCount");
         WATCH(numAntennas_);
         WATCH_MAP(bsrbuf_);
+
+        // --- ADDED BY KOUROS - NEW: X2 HANDSHAKE REGISTRATION ---
+                // This tells LteX2Manager: "Map X2_LOAD_INFORMATION_MSG to ME"
+        if (gate("x2$o")->isConnected()) {
+
+                // 1. Create Message (Using makeShared, NO name setting needed)
+                auto initMsg = inet::makeShared<LteX2Message>();
+                initMsg->setType(X2_LOAD_INFORMATION_MSG);
+
+                // 2. Create Packet (This is where we set the name "InitX2")
+                inet::Packet *pkt = new inet::Packet("InitX2");
+                pkt->insertAtBack(initMsg);
+
+                // 3. Add Tag
+                auto tag = pkt->addTag<X2ControlInfoTag>();
+                tag->setInit(true);
+
+                send(pkt, "x2$o");
+                EV << "LteMacEnb: Registered with X2Manager." << endl;
+            }
     }
     else if (stage == inet::INITSTAGE_PHYSICAL_ENVIRONMENT) {
         // Create and initialize AMC module
@@ -223,15 +252,39 @@ void LteMacEnb::initialize(int stage)
     }
 }
 
+
+// MODIFIED BY KOUROS
 void LteMacEnb::handleMessage(cMessage *msg)
 {
+    // 1. Handle Self Messages (Timers)
     if (msg->isSelfMessage()) {
         if (strcmp(msg->getName(), "flushHarqMsg") == 0) {
             flushHarqBuffers();
             delete msg;
             return;
         }
+        // Pass other timers (e.g. HARQ processes) to the base class
+        LteMacBase::handleMessage(msg);
+        return;
     }
+
+    // 2. Handle X2 Messages (Filter by Gate Name)
+    // Only try to cast/peek if the message actually entered via the 'x2' gate.
+    cGate* arrivalGate = msg->getArrivalGate();
+    if (arrivalGate) {
+        // Use getBaseName() to handle gate arrays (x2[0], x2[1]...) or simple gates (x2)
+        if (strcmp(arrivalGate->getBaseName(), "x2") == 0) {
+
+            // Safe to cast now because we know it came from X2
+            if (auto pkt = dynamic_cast<inet::Packet*>(msg)) {
+                 receiveX2Message(pkt);
+                 return; // Stop here, do not pass to Base
+            }
+        }
+    }
+
+    // 3. Handle Standard Traffic (RLC, PHY)
+    // If it wasn't X2, let the standard logic handle it
     LteMacBase::handleMessage(msg);
 }
 
@@ -1019,4 +1072,70 @@ int LteMacEnb::getActiveUesNumber(Direction dir)
     return activeUeSet.size();
 }
 
+
+///ADDED BY KOUROS
+void LteMacEnb::sendX2LoadInformation(const std::vector<bool>& rbs)
+{
+    if (!gate("x2$o")->isConnected()) return;
+
+    // 1. Create Payload
+    X2InterferenceBitmapIE* ie = new X2InterferenceBitmapIE();
+    ie->setProtectedRbsArraySize(rbs.size());
+    for(size_t i=0; i<rbs.size(); ++i) ie->setProtectedRbs(i, rbs[i]);
+    ie->setLength(10);
+
+    // 2. Create Message (Using makeShared, NO name setting needed)
+    auto x2Msg = inet::makeShared<LteX2Message>();
+    x2Msg->setType(X2_LOAD_INFORMATION_MSG);
+    x2Msg->setSourceId(nodeId_);
+    x2Msg->pushIe(ie);
+
+    // 3. Create Packet (Set name here)
+    inet::Packet* packet = new inet::Packet("X2LoadInfo");
+    packet->insertAtBack(x2Msg);
+
+    // 4. Routing Logic
+    // We explicitly cast integers to MacNodeId to avoid comparison errors
+    MacNodeId id1025 = MacNodeId(1025);
+    MacNodeId id1026 = MacNodeId(1026);
+
+    // Toggle Neighbor ID
+    MacNodeId neighborId = (nodeId_ == id1025) ? id1026 : id1025;
+
+    auto tag = packet->addTag<X2ControlInfoTag>();
+    tag->setSourceId(nodeId_);
+
+    // Create the destination list
+    DestinationIdList destList;
+    destList.push_back(neighborId);
+    tag->setDestIdList(destList);
+
+    send(packet, "x2$o");
+}
+
+//ADDED BY KOUROS
+void LteMacEnb::receiveX2Message(inet::Packet *pkt)
+{
+    // Use peekAtFront (returns a Ptr)
+    const auto& x2msg = pkt->peekAtFront<LteX2Message>();
+
+    for (unsigned int i = 0; i < x2msg->getIeArraySize(); i++) {
+        const auto* genericIe = x2msg->getIe(i);
+
+        if (genericIe->getType() == X2_INTERFERENCE_BITMAP_IE) {
+             const auto* bitmapIe = dynamic_cast<const X2InterferenceBitmapIE*>(genericIe);
+             if (bitmapIe) {
+                 std::vector<bool> mask;
+                 unsigned int size = bitmapIe->getProtectedRbsArraySize();
+                 for(unsigned int k=0; k<size; k++) mask.push_back(bitmapIe->getProtectedRbs(k));
+
+                 if (auto lyapDl = dynamic_cast<LyapunovScheduler*>(enbSchedulerDl_))
+                     lyapDl->receiveX2InterferenceBitmap(mask);
+                 if (auto lyapUl = dynamic_cast<LyapunovScheduler*>(enbSchedulerUl_))
+                     lyapUl->receiveX2InterferenceBitmap(mask);
+             }
+        }
+    }
+    delete pkt;
+}
 } //namespace

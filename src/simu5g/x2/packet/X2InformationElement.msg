@@ -19,6 +19,7 @@ enum X2InformationElementType
     COMP_PROP_REQUEST_IE = 2;    // CoMP slave -> master (for compManagerProportional, with RB value)
     COMP_PROP_REPLY_IE = 3;      // CoMP master -> slave (for compManagerProportional, with map)
     X2_HANDOVER_CMD_IE = 4;      // HO command source eNB -> target eNB
+    X2_INTERFERENCE_BITMAP_IE = 5;  // ADDED BY KOUROS
 };
 
 //
@@ -31,6 +32,12 @@ class X2InformationElement extends cObject
     X2InformationElementType type;
     int64_t length;  // Length in bytes
 };
+
+//ADDED BY KOUROS
+class X2InterferenceBitmapIE extends X2InformationElement
+{
+    bool protectedRbs[]; // The mask (True = Neighbor should NOT use this RB)
+}
 
 cplusplus(X2InformationElement) {{
   public:

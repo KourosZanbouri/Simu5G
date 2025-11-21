@@ -117,5 +117,8 @@ simple LteMacBase like ILteMac
 
         input PHY_to_MAC;    // PHY to MAC
         output MAC_to_PHY;    // MAC to PHY
+
+        // ADDED BY KOUROS
+        inout x2 @loose;
 }
 

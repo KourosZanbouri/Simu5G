@@ -20,6 +20,12 @@
 #include "simu5g/common/LteCommon.h"
 #include "simu5g/background/trafficGenerator/IBackgroundTrafficManager.h"
 
+//ADDED BY KOUROS
+
+#include "simu5g/x2/LteX2Manager.h"
+#include "simu5g/x2/packet/LteX2Message.h"
+//#include "simu5g/stack/mac/scheduling_modules/LyapunovScheduler.h" //
+
 namespace simu5g {
 
 using namespace omnetpp;
@@ -30,6 +36,7 @@ class LteSchedulerEnbDl;
 class LteSchedulerEnbUl;
 class ConflictGraph;
 class LteHarqProcessRx;
+class LyapunovScheduler;
 
 class LteMacEnb : public LteMacBase
 {
@@ -174,6 +181,10 @@ class LteMacEnb : public LteMacBase
 
     LteMacEnb();
     ~LteMacEnb() override;
+
+    // --- ADDED BY KOUROS- NEW FUNCTIONS ---
+    virtual void receiveX2Message(inet::Packet *pkt);
+    void sendX2LoadInformation(const std::vector<bool>& rbs);
 
     /// Returns the BSR virtual buffers.
     LteMacBuffer *getBsrVirtualBuffer(MacCid cid)

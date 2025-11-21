@@ -23,6 +23,11 @@
 #include "simu5g/stack/mac/LteMacEnb.h"
 #include "simu5g/x2/packet/X2ControlInfo_m.h"
 
+// ADDED BY KOUROS
+#include "simu5g/x2/packet/LteX2Message_m.h"
+#include "simu5g/x2/packet/X2InformationElement_m.h"
+#include "inet/common/packet/Packet.h"
+
 namespace simu5g {
 
 using namespace omnetpp;

@@ -8,11 +8,22 @@
 #define __SIMU5G_LYAPUNOVSCHEDULER_H_
 
 #include <omnetpp.h>
+#include <vector>
+#include <map>
+#include <queue>
+
+
+
+// 1. Ensure Binder is included for the constructor argument
+#include "simu5g/common/binder/Binder.h"
+
+// 2. Include the Base Class
 #include "simu5g/stack/mac/scheduler/LteScheduler.h"
 #include "simu5g/stack/sdap/common/QfiContextManager.h"
 
 namespace simu5g {
 
+// Forward declaration
 class LteSchedulerEnb;
 
 class LyapunovScheduler : public LteScheduler
@@ -25,6 +36,9 @@ class LyapunovScheduler : public LteScheduler
     double lyAlpha_;
     double lyBeta_;
 
+    std::vector<bool> neighborProtectedRbs_;
+    std::vector<bool> myCriticalRbs_;
+
     // Map to store granted bytes in the current TTI for each connection
     std::map<MacCid, unsigned int> grantedBytes_;
 
@@ -36,8 +50,8 @@ class LyapunovScheduler : public LteScheduler
 
     typedef std::pair<MacCid, double> ScoredCid;
 
-    // --- Methods ---
 
+    // --- Methods ---
     // Initializes the QFI context manager
     void loadContextIfNeeded();
 
@@ -51,6 +65,8 @@ class LyapunovScheduler : public LteScheduler
   public:
     // Constructor - Simplified to remove PF parameters
     LyapunovScheduler(Binder* binder, double lyAlpha, double lyBeta);
+
+    void receiveX2InterferenceBitmap(const std::vector<bool>& rbs);
 
 
     // Main scheduling functions
