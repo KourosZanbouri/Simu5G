@@ -29,36 +29,5 @@ module NRUeDrb extends NrUe
 {
     parameters:
         cellularNic.typename = default("NRNicUeDrb");
-    submodules:
-        //# message dispatcher for SAP to link layer
-        bi: MessageDispatcher {
-            parameters:
-                @display("p=329.2,506.9;b=219.2,6.9,,,,1");
-        }
-        tsntt: TSNTT {
-            @display("p=333.8,474.6;is=m");
-        }
-	    connections allowunconnected:
-
-        ipv4.ifIn <-- nl.out++ if hasIpv4;
-        ipv4.ifOut --> nl.in++ if hasIpv4;
-
-
-        cellularNic.upperLayerOut --> bi.in++;
-        cellularNic.upperLayerIn <-- bi.out++;
-
-        tsntt.stackOut --> bi.in++;
-        tsntt.stackIn <-- bi.out++;
-        tsntt.stackOut --> nl.in++;
-        tsntt.stackIn <-- nl.out++;
-
-        if numEthInterfaces > 0 {
-    eth[0].upperLayerOut --> bi.in++;     // L2 Frame -> TSNTT
-    eth[0].upperLayerIn <-- bi.out++;    // L2 Frame <- TSNTT
-}
-        tsntt.tsnOut --> bi.in++;
-        tsntt.tsnIn <-- bi.out++;
-        tsntt.tsnOut --> nl.in++;
-        tsntt.tsnIn <-- nl.out++;
 
 }

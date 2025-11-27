@@ -24,6 +24,9 @@ import simu5g.nodes.Upf;
 import simu5g.nodes.BackgroundCell;
 import simu5g.world.radio.LteChannelControl;
 
+//Kouros
+import inet.node.tsn.TsnDevice;
+
 
 // SingleCell_standalone
 //
@@ -73,9 +76,20 @@ network SingleCell_Standalone_Drb
         ue[numUe]: NRUeDrb {
             @display("p=628,411");
         }
+
+        tsnDevice1: TsnDevice {
+            parameters:
+                numEthInterfaces = 1;
+            @display("p=486,542");
+        }
     connections:
         server.pppg++ <--> Eth10G <--> router.pppg++;
         router.pppg++ <--> Eth10G <--> upf.filterGate;
         upf.pppg++ <--> Eth10G <--> iUpf.pppg++;
         iUpf.pppg++ <--> Eth10G <--> gnb.ppp;
+
+
+        // [WIRED CONNECTION] - Kouros
+        // We connect the NEW 'tsnG' gate (from NrUe.ned) to the Standard 'ethg[0]' gate
+        ue[0].tsnG <--> Eth10G <--> tsnDevice1.ethg[0];
 }

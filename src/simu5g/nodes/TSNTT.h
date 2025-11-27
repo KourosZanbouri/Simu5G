@@ -4,89 +4,69 @@
  *  Created on: Oct 29, 2025
  *      Author: kouros
  */
-
-#ifndef SIMU5G_NODES_TSNTT_H_
-#define SIMU5G_NODES_TSNTT_H_
+#ifndef __SIMU5G_TSNTT_H_
+#define __SIMU5G_TSNTT_H_
 
 #include <omnetpp.h>
+#include <map>
+#include <string>
+#include <vector>
+
 #include "inet/common/packet/Packet.h"
 #include "inet/networklayer/common/L3Address.h"
 #include "inet/linklayer/common/MacAddress.h"
-#include "common/binder/Binder.h"
+#include "inet/networklayer/contract/IInterfaceTable.h"
+#include "inet/linklayer/common/UserPriorityTag_m.h"
+#include "inet/common/InitStages.h" // [FIX] Required for Init Stages
 
-// Import the Simu5G QoS Tag
+// Import generated message headers
 #include "simu5g/common/QosTag_m.h"
+
+namespace simu5g {
 
 using namespace omnetpp;
 using namespace inet;
-using namespace simu5g;
 
 class TSNTT : public cSimpleModule
 {
   protected:
-    // --- Parameters ---
-    int localTsnInterfaceId = -1; // The interface ID of eth[0]
-    MacAddress localTsnMac;       // The MAC address of our eth[0] port
+    // --- Configuration State ---
+    std::map<int, int> pcpToQfiMap_;
+    std::map<int, int> qfiToPcpMap_;
+    std::map<L3Address, MacAddress> ipToMacMap_;
 
-    // --- System Modules ---
-    Binder *binder = nullptr;
+    // --- Interface State ---
+    int tsnInterfaceId = -1;
+    MacAddress tsnInterfaceMac;
 
     // --- Statistics ---
-    simsignal_t ulPcpInSignal[8];   // Per-PCP UL packet count (0-7)
-    simsignal_t dlQfiInSignal[64];  // Per-QFI DL packet count (0-63)
-    simsignal_t ulPacketDelay;
-    simsignal_t dlPacketDelay;
-    simsignal_t ulDroppedPackets;
-    simsignal_t dlDroppedPackets;
-
+    simsignal_t ulPcpInSignal[8];
+    simsignal_t dlQfiInSignal[64];
+    simsignal_t droppedPacketsSignal;
 
   protected:
-    virtual void initialize() override;
+    // [FIX] Switch to Multi-Stage Initialization
+    virtual void initialize(int stage) override;
+    virtual int numInitStages() const override { return NUM_INIT_STAGES; }
+
     virtual void handleMessage(cMessage *msg) override;
 
-    /**
-     * @brief Handles L2 frames from the wired TSN network (tsnIn).
-     *
-     * Reads PCP, maps to QFI, strips L2 headers, adds QosReq tag,
-     * and sends to the 5G stack (stackOut).
-     */
-    virtual void handlePacketFromTsn(Packet *pkt);
+    // --- Core Processing ---
+    void handleUplink(Packet *pkt);
+    void handleDownlink(Packet *pkt);
 
-    /**
-     * @brief Handles L3 packets from the 5G stack (stackIn).
-     *
-     * Reads QFI , maps to PCP, finds dest MAC, adds L2 headers,
-     * and sends to the wired TSN network (tsnOut).
-     */
-    virtual void handlePacketFromStack(Packet *pkt);
+    // --- Helpers ---
+    int getPcpFromPacket(Packet *pkt);
+    int getQfiFromPacket(Packet *pkt);
+    MacAddress resolveDestMac(const L3Address& destIp);
 
-    /**
-     * @brief Reads the QFI from a DL packet (from a QosInd tag).
-     */
-    virtual int getQfiFromPacket(Packet *pkt);
-
-    /**
-     * @brief Reads the PCP from an UL packet (from a VlanTag).
-     */
-    virtual int getPcpFromPacket(Packet *pkt);
-
-    /**
-     * @brief Maps a QFI (int) to a PCP (int) .
-     */
-    virtual int convertQfiToPcp(int qfi);
-
-    /**
-     * @brief Maps a PCP (int) to a QFI (int).
-     */
-    virtual int convertPcpToQfi(int pcp);
-
-    /**
-     * @brief Looks up the destination MAC address for a given IP address.
-     */
-    virtual MacAddress resolveMacAddress(const L3Address& destIp);
-
-    virtual void registerSignals();
+    // --- Initialization Parsers ---
+    void parseQosMapping(const char* mapStr);
+    void parseMacMapping(const char* mapStr);
+    std::vector<std::string> split(const std::string& str, char delimiter);
+    void registerSignals();
 };
 
+} // namespace simu5g
 
-#endif /* SIMU5G_NODES_TSNTT_H_ */
+#endif

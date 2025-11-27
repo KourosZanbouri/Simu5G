@@ -15,6 +15,7 @@ package simu5g.nodes;
 import simu5g.corenetwork.statsCollector.NrUeStatsCollector;
 import simu5g.nodes.LteUe;
 import inet.linklayer.contract.IEthernetInterface;
+import inet.linklayer.ethernet.EthernetInterface;
 import inet.common.MessageDispatcher;
 
 //
@@ -32,11 +33,18 @@ module NrUe extends LteUe
         int nrMacCellId @mutable = default(0); // TODO: this is not a real parameter
         cellularNic.nrMac.collectorModule = hasRniSupport ? "^.^.nrUeCollector" : "";
         cellularNic.nrPhy.hasCollector = hasRniSupport;
-        eth.typename = "EthernetInterface";
+
+
+        //By kouros
+        numEthInterfaces = 0;
 
     gates:
         input nrRadioIn @directIn;     // connection to master
         inout ethg[numEthInterfaces] @labels(EtherFrame-conn) @allowUnconnected;
+
+
+        //NEW GATE for TSN CABLE - Kouros
+        inout tsnG @labels(EtherFrame-conn);
 
     submodules:
         //# UeStatsCollector - for MEC
@@ -44,43 +52,30 @@ module NrUe extends LteUe
             @display("p=127,506;is=s");
         }
 
-        //# message dispatcher for link layer
-        bi: MessageDispatcher {
-            parameters:
-                @display("p=322,528;b=219.2,6.9,,,,1");
-        }
-        //# TSN Translator
+        // By Kouros
         tsntt: TSNTT {
-            @display("p=333.8,474.6;is=m");
+            @display("p=342,495");
         }
 
+        // By Kouros
+        tsnEth: EthernetInterface {
+            parameters:
+                @display("p=674,590");
+        }
 
     connections allowunconnected:
 
         cellularNic.nrRadioIn <-- nrRadioIn;
 
-        cellularNic.upperLayerOut --> nl.in++ if tp == 1; //TEMP HACK
-        cellularNic.upperLayerIn <-- nl.out++ if tp == 1; // TEMP HACK
-
-        cellularNic.upperLayerOut --> bi.in++;
-        cellularNic.upperLayerIn <-- bi.out++;
-
-        tsntt.stackOut --> bi.in++;
-        tsntt.stackIn <-- bi.out++;
+        // TSN Bridge Path: TSNTT <-> NL
         tsntt.stackOut --> nl.in++;
         tsntt.stackIn <-- nl.out++;
 
-        if numEthInterfaces > 0 {
-            eth[0].upperLayerOut --> bi.in++;     // L2 Frame -> TSNTT
-            eth[0].upperLayerIn <-- bi.out++;    // L2 Frame <- TSNTT
-        }
+        // Wired Path: TSNTT <-> Custom Ethernet
+        tsnEth.upperLayerOut --> tsntt.tsnIn;
+        tsnEth.upperLayerIn <-- tsntt.tsnOut;
 
-        for i=0..numEthInterfaces-1 {
-            eth[i].phys <--> { @display("m=s"); } <--> ethg[i];
-        }
+        // Cable Connection: Custom Ethernet <-> Outside World
+        tsnEth.phys <--> { @display("m=s"); } <--> tsnG;
 
-        tsntt.tsnOut --> bi.in++;
-        tsntt.tsnIn <-- bi.out++;
-        tsntt.tsnOut --> nl.in++;
-        tsntt.tsnIn <-- nl.out++;
 }

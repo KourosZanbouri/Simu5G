@@ -16,10 +16,25 @@
 package simu5g.nodes;
 
 
+
 simple TSNTT
 {
     parameters:
         @display("i=block/layer");
+
+        // The default value "^.interfaceTable" means "look in my parent module for 'interfaceTable'"
+        string interfaceTableModule = default("^.interfaceTable");
+
+        // Configuration Strings for your .ini file
+        // Example: "6:9, 5:10" (PCP 6 -> QFI 9)
+        string qosMapping = default("");
+
+        // Example: "192.168.1.2:00-01-02-03-04-05"
+        string staticMacMapping = default("");
+
+        // Interface name to look for (usually "eth0")
+        string tsnInterfaceName = default("eth0");
+
     gates:
         // To/From the local TSN network (e.g., eth[0])
         input tsnIn @labels(inet::EtherFrame);
