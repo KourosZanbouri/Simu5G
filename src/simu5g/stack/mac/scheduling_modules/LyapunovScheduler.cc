@@ -119,7 +119,7 @@ void LyapunovScheduler::prepareSchedule()
 
         // --- FIX 1: Define 'isCritical' HERE (Before using it) ---
         const QfiContext* ctx = getQfiContextForCid(cid);
-        bool isCritical = (ctx && ctx->qfi == 4);
+        bool isCritical = (ctx && ctx->qfi == 3);
         // ---------------------------------------------------------
 
         unsigned int availableBlocks = 0, availableBytes = 0;
