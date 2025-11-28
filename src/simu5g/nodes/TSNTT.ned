@@ -15,32 +15,39 @@
 
 package simu5g.nodes;
 
-
-
+// The TSNTT module acts as a "Gateway" or "Shim" between Layer 2 (Ethernet) and Layer 3 (IPv4/5G).
 simple TSNTT
 {
     parameters:
         @display("i=block/layer");
 
-        // The default value "^.interfaceTable" means "look in my parent module for 'interfaceTable'"
-        string interfaceTableModule = default("^.interfaceTable");
-
-        // Configuration Strings for your .ini file
-        // Example: "6:9, 5:10" (PCP 6 -> QFI 9)
+        // QoS Mapping: Translates Ethernet Priority (PCP) to 5G QoS Flow (QFI)
+        // Example: "7:80, 0:9" means PCP 7 -> QFI 80, PCP 0 -> QFI 9
         string qosMapping = default("");
 
-        // Example: "192.168.1.2:00-01-02-03-04-05"
+        // Downlink NAT: If set, rewrites the Destination IP of incoming 5G packets
+        // This allows the Server to target the UE, but the packet to be forwarded to the TSN Device.
+        string downlinkDestIp = default("");
+
+        // MAC Resolution: Static mapping of IP -> MAC for the wired link
+        // Example: "192.168.1.2:0A-AA-00-00-00-04"
         string staticMacMapping = default("");
 
-        // Interface name to look for (usually "eth0")
-        string tsnInterfaceName = default("eth0");
+        // Interface Name: The name of the Ethernet interface in the UE (e.g., "tsnEth")
+        string tsnInterfaceName = default("tsnEth");
+
+        // Binder Module: Used to register the wired IP with the 5G Core
+        string binderModule = default("binder");
+
+        // Helper to find the interface table
+        string interfaceTableModule = default("^.interfaceTable");
 
     gates:
-        // To/From the local TSN network (e.g., eth[0])
+        // Connections to the Wired World (Ethernet Interface)
         input tsnIn @labels(inet::EtherFrame);
         output tsnOut @labels(inet::EtherFrame);
 
-        // To/From the 5G stack
+        // Connections to the 5G Stack (Network Layer)
         input stackIn @labels(inet::Packet);
         output stackOut @labels(inet::Packet);
 }
