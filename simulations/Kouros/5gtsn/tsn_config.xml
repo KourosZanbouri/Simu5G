@@ -1,15 +1,20 @@
 <config>
     <!-- 
-      1. Static Route for TSN Device 
-         Traffic to Any Network (0.0.0.0/0) -> Gateway (192.168.1.1)
-         Interface: eth0
+      1. Default Route for TSN Device
+         "To reach any network (0.0.0.0/0), go to gateway 192.168.1.1"
     -->
     <route hosts="tsnDevice1" destination="0.0.0.0" netmask="0.0.0.0" gateway="192.168.1.1" interface="eth0" />
 
     <!-- 
-      2. General Autoconfiguration Rule (Required for Simu5G)
-         This ensures gNB, Server, and UE Wireless interfaces still get IPs.
-         We assign them from the 10.x.x.x range.
+      2. Manual IP Assignment
+         We lock the wired link to a specific subnet.
+    -->
+    <interface hosts="ue[0]" names="tsnEth" address="192.168.1.1" netmask="255.255.255.0" />
+    <interface hosts="tsnDevice1" names="eth0" address="192.168.1.2" netmask="255.255.255.0" />
+
+    <!-- 
+      3. Auto-Config for 5G
+         Everything else gets 10.x.x.x addresses automatically.
     -->
     <interface hosts="**" address="10.x.x.x" netmask="255.x.x.x"/>
 </config>
