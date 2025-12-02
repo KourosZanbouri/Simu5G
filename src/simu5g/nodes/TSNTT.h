@@ -12,9 +12,8 @@
 #include "inet/linklayer/common/MacAddress.h"
 #include "inet/networklayer/contract/IInterfaceTable.h"
 #include "inet/linklayer/common/UserPriorityTag_m.h"
-#include "inet/common/Protocol.h" //
+#include "inet/common/Protocol.h"
 
-// Simu5G Header for QoS Tags
 #include "simu5g/common/QosTag_m.h"
 
 namespace simu5g {
@@ -25,10 +24,10 @@ using namespace inet;
 /**
  * @brief TSN Translator (DS-TT) for Simu5G.
  *
- * Acting as a Gateway between a wired TSN interface (Ethernet) and the 5G Stack (IP/SDAP).
- * * Functions:
- * 1. Initialization: Registers Wired IP with Binder to enable 5G Core routing.
- * 2. Handshake: Forwards interface registration messages so IPv4/ARP can bind.
+ * Acts as a Gateway between a wired TSN interface (Ethernet) and the 5G Stack (IP/SDAP).
+ * Functions:
+ * 1. Initialization: Registers Wired IP with Binder.
+ * 2. Registration: Manually registers ARP, IPv4, and EthernetMac with the Dispatcher.
  * 3. Uplink: Strips Ethernet, Maps PCP->QFI, Tags for IPv4/ARP.
  * 4. Downlink: NATs IP (optional), Maps QFI->PCP, Adds Ethernet Headers.
  */
@@ -58,6 +57,9 @@ class TSNTT : public cSimpleModule
     // Core Processing Paths
     void handleUplink(Packet *pkt);   // Wired -> Wireless
     void handleDownlink(Packet *pkt); // Wireless -> Wired
+
+    // [FIX] Helper to register protocols directly with the dispatcher
+    void registerProtocolWithDispatcher(const Protocol& protocol, cGate* outGate);
 
     // Helpers
     int getPcpFromPacket(Packet *pkt);
