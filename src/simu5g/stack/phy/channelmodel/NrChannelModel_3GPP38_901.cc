@@ -371,7 +371,7 @@ double NrChannelModel_3GPP38_901::computeIndoorFactory(double threeDimDistance, 
     
     
     if (los)
-        pLoss = pLoss_los;
+        return pLoss_los;
 
     // NLOS path loss
     double pLoss_nlos = 0.0;
