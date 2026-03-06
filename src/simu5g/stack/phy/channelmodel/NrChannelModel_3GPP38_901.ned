@@ -27,9 +27,17 @@ simple NrChannelModel_3GPP38_901 extends NrChannelModel
 
         bool useBuildingPenetrationHighLossModel = default(false);
 
-        // Added By Kouros -  configurable InF parameters
+        // InF geometry parameters (Added by Kouros Zanbouri)
+        // d_clutter: average size/spacing of clutter objects [m]
         double d_clutter @unit(m) = default(10m);
-        double clutter_density_r = default(0.9);
+
+        // clutter_density_r: volume density of clutter (0..1)
+        //   0.0 = empty hall, 1.0 = fully blocked (use ~0.3-0.8 for factories)
+        double clutter_density_r = default(0.4);
+
+        // hClutter: height of clutter objects above floor [m]
         double hClutter @unit(m) = default(1.0m);
+
+        // ceilingHeight: height from floor to ceiling [m]
         double ceilingHeight @unit(m) = default(10m);
 }
