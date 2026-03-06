@@ -27,7 +27,23 @@ void NrChannelModel_3GPP38_901::initialize(int stage)
     clutter_density_r_ = par("clutter_density_r").doubleValue();
     hClutter_ = par("hClutter").doubleValue();
     ceilingHeight_ = par("ceilingHeight").doubleValue();
+    // Override correlation distance for InF scenarios.
+    // TR 38.901 Table 7.5-6 Part 3 "Channel model parameters for InF" specifies 10 m for all InF sub-scenarios.
+    // The parent class reads this from NED (default ~50 m for outdoor),
+    // so we override it here after the parent has initialized.
+    if (scenario_ == INDOOR_FACTORY_SL ||
+        scenario_ == INDOOR_FACTORY_DL ||
+        scenario_ == INDOOR_FACTORY_SH ||
+        scenario_ == INDOOR_FACTORY_DH ||
+        scenario_ == INDOOR_FACTORY_HH)
+    {
+        correlationDistance_ = 10.0; // meters, TR 38.901 Table 7.5-6
+        EV << "NrChannelModel_3GPP38_901: InF scenario detected, "
+           << "overriding correlationDistance to 10.0 m" << endl;
+    }    
 }
+
+
 
 void NrChannelModel_3GPP38_901::computeLosProbability(double d, MacNodeId nodeId)
 {
@@ -341,42 +357,62 @@ double NrChannelModel_3GPP38_901::computeIndoorFactory(double threeDimDistance, 
 {
     if (threeDimDistance < 1)
         threeDimDistance = 1;
-    // Corrected based on recent 3GPP TR 38.901 updates
+
     // InF model is valid for d_3D up to 600m
-    if (threeDimDistance > 600 && !tolerateMaxDistViolation_)
-        throw cRuntimeError("Error: Indoor Factory path loss model is valid for d<600m only Received distance: %g", threeDimDistance);
-    // Compute penetration loss (optional, can be added if UEs are inside machinery, etc.)
-    double penetrationLoss = 0.0;
-    // if (inside_building_)  // This model is already "inside", but you could model inner walls
-    //     penetrationLoss = computePenetrationLoss(threeDimDistance);
-    double pLoss = 0.0;
-    // CORRECT PLACEMENT: Declare and calculate pLoss_los here, in the outer scope.
+    if (threeDimDistance > 600.0 && !tolerateMaxDistViolation_)
+        throw cRuntimeError(
+            "NrChannelModel_3GPP38_901::computeIndoorFactory - "
+            "Indoor Factory path loss model valid for d<600m. Received: %g",
+            threeDimDistance);
+
+    // LOS path loss - identical for all InF sub-scenarios
+    // TR 38.901 Table 7.4.1-1, InF-LOS
     double pLoss_los = 31.84 + 21.5 * log10(threeDimDistance) + 19.0 * log10CarrierFrequencyGHz_;
-    if (los) {
-        // Now you can safely use pLoss_los here.
+    
+    
+    if (los)
         pLoss = pLoss_los;
-    } else { // NLOS cases
-        double pLoss_nlos = 0.0;
-        switch (scenario_) {
-            case INDOOR_FACTORY_SL:
-                pLoss_nlos = 33.0 + 25.5 * log10(threeDimDistance) + 20.0 * log10CarrierFrequencyGHz_;
-                break;
-            case INDOOR_FACTORY_DL:
-                pLoss_nlos = 18.6 + 35.7 * log10(threeDimDistance) + 20.0 * log10CarrierFrequencyGHz_;
-                break;
-            case INDOOR_FACTORY_SH:
-                pLoss_nlos = 32.4 + 23.0 * log10(threeDimDistance) + 20.0 * log10CarrierFrequencyGHz_;
-                break;
-            case INDOOR_FACTORY_DH:
-                pLoss_nlos = 33.63 + 21.9 * log10(threeDimDistance) + 20.0 * log10CarrierFrequencyGHz_;
-                break;
-            default:
-                throw cRuntimeError("Unhandled Indoor Factory scenario in computeIndoorFactory");
-        }
-        // Per the standard, the final NLOS path loss is the maximum of the NLOS and LOS path loss values
-        pLoss = std::max(pLoss_los, pLoss_nlos);
+
+    // NLOS path loss
+    double pLoss_nlos = 0.0;
+
+    switch (scenario_) {
+        case INDOOR_FACTORY_SL:
+            pLoss_nlos = 33.0 + 25.5 * log10(threeDimDistance) + 20.0 * log10CarrierFrequencyGHz_;
+            break;
+        case INDOOR_FACTORY_DL:
+            pLoss_nlos = 18.6 + 35.7 * log10(threeDimDistance) + 20.0 * log10CarrierFrequencyGHz_;
+            break;
+        case INDOOR_FACTORY_SH:
+            pLoss_nlos = 32.4 + 23.0 * log10(threeDimDistance) + 20.0 * log10CarrierFrequencyGHz_;
+            break;
+        case INDOOR_FACTORY_DH:
+            pLoss_nlos = 33.63 + 21.9 * log10(threeDimDistance) + 20.0 * log10CarrierFrequencyGHz_;
+            break;
+        default:
+            throw cRuntimeError(
+                "NrChannelModel_3GPP38_901::computeIndoorFactory - "
+                "Unhandled InF NLOS sub-scenario");
+            }
+    // The clutter density parameter r (clutter_density_r_) is used in
+    // computeLosProbability() to determine whether a path is blocked, but
+    // once in NLOS the degree of obstruction must also increase the path
+    // loss. This term captures the mean excess attenuation caused by the
+    // factory clutter field.
+    //
+    // L_clutter = -17.3 * log10(1 - r)   [dB]
+    if (clutter_density_r_ > 0.0 && clutter_density_r_ < 1.0) {
+        double L_clutter = -17.3 * log10(1.0 - clutter_density_r_);
+        pLoss_nlos += L_clutter;
+
+        EV << "NrChannelModel_3GPP38_901::computeIndoorFactory - "
+           << "clutter loss = " << L_clutter << " dB "
+           << "(r=" << clutter_density_r_ << ")" << endl;
     }
-    return pLoss;
+
+    // Per TR 38.901: final NLOS PL = max(PL_LOS, PL_NLOS)
+    return std::max(pLoss_los, pLoss_nlos);    
+    
 }
 
 
