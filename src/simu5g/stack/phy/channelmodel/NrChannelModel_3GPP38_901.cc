@@ -409,13 +409,18 @@ double NrChannelModel_3GPP38_901::getStdDev(bool dist, MacNodeId nodeId)
                 return 8.;
 
             // Added By Kouros
+        case INDOOR_FACTORY_HH:
+        // HH is always LOS (p = 1.0 in computeLosProbability)
+        // ETSI TR 138 901 V19.2.0 Table 7.4.1-1 : LOS shadow fading std dev = 4.3 dB
+            return 4.3;
+        
         case INDOOR_FACTORY_SL:
         case INDOOR_FACTORY_DL:
         case INDOOR_FACTORY_SH:
         case INDOOR_FACTORY_DH:
             if (losMap_[nodeId]) {
-                // For all InF scenarios, the LOS shadow fading std is 4.0 dB
-                return 4.0;
+                // For all InF scenarios, the LOS shadow fading std is 4.3 dB
+                return 4.3;
             } else {
                 // For NLOS, the value depends on the specific InF sub-scenario
                 switch (scenario_) {
@@ -426,7 +431,7 @@ double NrChannelModel_3GPP38_901::getStdDev(bool dist, MacNodeId nodeId)
                     case INDOOR_FACTORY_SH:
                         return 5.9;
                     case INDOOR_FACTORY_DH:
-                        return 4.0; // The 3GPP value is 4.0 dB for DH-NLOS
+                        return 4.0; 
                     default:
                         throw cRuntimeError("Unhandled InF NLOS scenario in getStdDev");
                 }
