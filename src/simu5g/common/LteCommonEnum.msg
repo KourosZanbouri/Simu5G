@@ -52,7 +52,7 @@ enum LteTrafficClass
 /// Scheduler grant type
 enum GrantType
 {
-    FITALL = 0; FIXED_ = 1; URGENT = 2; UNKNOWN_GRANT_TYPE = 3; // Note: FIXED would clash with <windows.h>
+    FITALL = 0; FIXED_ = 1; URGENT = 2; UNKNOWN_GRANT_TYPE = 3; // Note: FIXED would clash with <windows.h> 
 };
 
 /// Lte RLC Types
@@ -80,9 +80,27 @@ enum LteD2DMode
     DM = 2;
 };
 
+///
+//      Applications  
+// 
+
+enum ApplicationType
+{
+    VOIP = 0;
+    VOD = 1;
+    WEB = 2;
+    CBR = 3;
+    FTP = 4;
+    GAMING = 5;
+    FULLBUFFER = 6;
+    UNKNOWN_APP = 7;
+};
+
+
 //
 //  Scheduling discipline
-//
+// 
+
 enum SchedDiscipline
 {
     DRR = 0;
@@ -92,7 +110,10 @@ enum SchedDiscipline
     MAXCI_OPT_MB = 4;
     MAXCI_COMP = 5;
     ALLOCATOR_BESTFIT = 6;
-    UNKNOWN_DISCIPLINE = 7;
+    QOS_PF = 7;
+    LYAPUNOV_SCHEDULER = 8;
+    UNKNOWN_DISCIPLINE = 9;
+
 };
 
 // specifies how the final CQI will be computed from the multiband ones
@@ -106,13 +127,17 @@ enum PilotComputationModes
 };
 
 
-///   Transmission Modes
+///   Transmission Modes  
 enum TxMode
 {
     // Note: If you add more tx modes, update DL_NUM_TXMODE and UL_NUM_TXMODE
     SINGLE_ANTENNA_PORT0 = 0;
-    TRANSMIT_DIVERSITY = 1;
-    UNKNOWN_TX_MODE = 2;
+    SINGLE_ANTENNA_PORT5 =1;
+    TRANSMIT_DIVERSITY = 2;
+    OL_SPATIAL_MULTIPLEXING = 3;
+    CL_SPATIAL_MULTIPLEXING = 4;
+    MULTI_USER = 5;
+    UNKNOWN_TX_MODE = 6;
 };
 
 enum TxDirectionType
@@ -122,11 +147,20 @@ enum TxDirectionType
     UNKNOWN_TX_DIRECTION = -1;
 };
 
+// Lte feedback type
+enum FeedbackGeneratorType
+{
+    IDEAL = 0;
+    REAL = 1;
+    DAS_AWARE = 2;
+    UNKNOW_FB_GEN_TYPE = 3;
+};
+
 /// OFDMA layers (see FIXME lteAllocationModuble.h for "layers" meaning)
 enum Plane
 {
     MAIN_PLANE = 0;
-    MU_MIMO_PLANE = 1; // currently unused
+    MU_MIMO_PLANE = 1;
 };
 
 enum DeploymentScenario
@@ -136,11 +170,18 @@ enum DeploymentScenario
     URBAN_MACROCELL = 2;
     RURAL_MACROCELL = 3;
     SUBURBAN_MACROCELL = 4;
-    UNKNOWN_SCENARIO = 5;
+	// added by Kouros
+    INDOOR_FACTORY_SL = 5; // Sparse clutter, Low BS
+    INDOOR_FACTORY_DL = 6; // Dense clutter, Low BS
+    INDOOR_FACTORY_SH = 7; // Sparse clutter, High BS
+    INDOOR_FACTORY_DH = 8; // Dense clutter, High BS
+    INDOOR_FACTORY_HH = 9; // Add this new line
+    UNKNOW_SCENARIO = 10;
 };
 
 
-/// OFDMA Remotes Antennas (see LteAllocationModule) -- only MACRO is currently supported
+//        DAS Support      
+/// OFDMA Remotes (see FIXME LteAllocationModule.h for "antenna" meaning)
 enum Remote
 {
     MACRO = 0;
@@ -153,7 +194,7 @@ enum Remote
     UNKNOWN_RU = 7;
 };
 
-// Lte PHY Frame Types
+// Lte PHY Frame Types 
 enum LtePhyFrameType
 {
     DATAPKT = 0;
@@ -167,18 +208,18 @@ enum LtePhyFrameType
     UNKNOWN_TYPE = 8;
 };
 
-// Node types on the Radio Access Network. Note that the LTE vs 5G (NR)
-// distinction is usually represented with isNr booleans and/or nodeId/nrNodeId
-// variables being empty or not.
+
+//  RAN Node Types  
 enum RanNodeType
 {
-    NODEB  = 0; // eNodeB / gNodeB
-    UE = 1; // UE
-    UNKNOWN_NODE_TYPE  = 2;
+    INTERNET = 0; /// Internet side of the Lte network
+    ENODEB  = 1; /// eNodeB
+    GNODEB  = 2; /// gNodeB
+    UE = 3; /// UE
+    UNKNOWN_NODE_TYPE  = 4;/// unknown
 };
 
-
-//  Core Network Types
+//  Core Network Types  
 enum CoreNodeType
 {
     ENB = 0;          // LTE
@@ -190,7 +231,7 @@ enum CoreNodeType
 };
 
 
-// Types of BSR  * TODO add LONG/TRUNCATED BSR
+// Types of BSR  * TODO add LONG/TRUNCATED BSR  
 enum BsrType
 {
     SHORT_BSR  = 0;

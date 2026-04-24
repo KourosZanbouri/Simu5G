@@ -12,7 +12,7 @@
 package simu5g.stack.phy.channelmodel;
 
 //
-// Implements the functions for a model representing the 2D channel in the LTE
+// This module implements the functions for a model representing the 2D channel in the LTE
 // specification 3GPP TR 36.803. It includes the computation of:
 // - path loss (both line-of-sight and non-line-of-sight),
 // - fading (Jakes or Rayleigh model),
@@ -30,7 +30,7 @@ simple LteRealisticChannelModel extends LteChannelModel
         bool shadowing = default(true);
 
         // Pathloss scenario from ITU -->
-        string scenario @enum(INDOOR_HOTSPOT,URBAN_MICROCELL,URBAN_MACROCELL,RURAL_MACROCELL,SUBURBAN_MACROCELL,UNKNOWN_SCENARIO) = default("URBAN_MACROCELL");
+        string scenario @enum(INDOOR_HOTSPOT,URBAN_MICROCELL,URBAN_MACROCELL,RURAL_MACROCELL,SUBURBAN_MACROCELL,INDOOR_FACTORY_SL,INDOOR_FACTORY_DL,INDOOR_FACTORY_SH,INDOOR_FACTORY_DH,INDOOR_FACTORY_HH,UNKNOW_SCENARIO) = default("URBAN_MACROCELL");
 
         // eNodeB height -->
         double nodebHeight @unit(m) = default(25m);
@@ -50,6 +50,11 @@ simple LteRealisticChannelModel extends LteChannelModel
         double targetBler = default(0.01);
         // HARQ reduction -->
         double harqReduction = default(0.2);
+
+        // Rank indicator tracefile -->
+        double lambdaMinTh = default(0.02);
+        double lambdaMaxTh = default(0.2);
+        double lambdaRatioTh = default(20);
 
         // Antenna Gain of UE -->
         double antennaGainUe @unit(dBi) = default(0dBi);
