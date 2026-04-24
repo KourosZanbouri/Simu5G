@@ -40,8 +40,8 @@ namespace simu5g {
  */
 class NrChannelModel_3GPP38_901 : public NrChannelModel
 {
-
-      // ADDED BY KOUROS
+    ////////////////////////////////////////
+    // ADDED BY KOUROS
   protected:
     // Parameters for InF LOS Probability Model
     double d_clutter_;
@@ -50,9 +50,26 @@ class NrChannelModel_3GPP38_901 : public NrChannelModel
     double ceilingHeight_;
     /////
 
+    // --- Markov Chain Blockage Parameters ---
+        double lambda_U_B_;
+        double lambda_B_U_;
+        double blockageAttenuation_;
+
+        // Map to store temporal blockage state for each UE
+        // Key: MacNodeId
+        // Value: Pair <Time of last evaluation, Is Currently Blocked?>
+        std::map<MacNodeId, std::pair<omnetpp::simtime_t, bool>> blockageStateMap_;
+        ////////////////////////////////////////////////////
+
     
   public:
     void initialize(int stage) override;
+
+    // BY KOUROS
+    // We override getAttenuation because it provides the nodeId we need
+    // to track the Markov blockage state for individual UEs.
+    // We override getAttenuation for the Markov blockage logic
+    virtual double getAttenuation(MacNodeId nodeId, Direction dir, inet::Coord coord, bool cqiDl) override;
 
     /*
      * Compute LOS probability (taken from TR 38.901)
@@ -135,7 +152,6 @@ class NrChannelModel_3GPP38_901 : public NrChannelModel
      * @param los line-of-sight flag
      */
     double computeIndoorFactory(double threeDimDistance, bool los);
-
 };
 
 } //namespace

@@ -21,6 +21,13 @@ void NrChannelModel_3GPP38_901::initialize(int stage)
     if (inside_building_)
         useBuildingPenetrationHighLossModel_ = par("useBuildingPenetrationHighLossModel").boolValue();
 
+    // 2. Read our custom parameters
+    if (stage == inet::INITSTAGE_LOCAL) {
+        lambda_U_B_ = par("lambda_U_B").doubleValue();
+        lambda_B_U_ = par("lambda_B_U").doubleValue();
+        blockageAttenuation_ = par("blockageAttenuation").doubleValue();
+    }
+
     // ADDED BY KOUROS
     // Initialize configurable InF parameters
     d_clutter_ = par("d_clutter").doubleValue();
@@ -28,6 +35,62 @@ void NrChannelModel_3GPP38_901::initialize(int stage)
     hClutter_ = par("hClutter").doubleValue();
     ceilingHeight_ = par("ceilingHeight").doubleValue();
 }
+
+// =========================================================================
+// ADDED MARKOV CHAIN BLOCKAGE LOGIC
+// =========================================================================
+double NrChannelModel_3GPP38_901::getAttenuation(MacNodeId nodeId, Direction dir, inet::Coord coord, bool cqiDl)
+{
+    // 1. Get baseline attenuation (this automatically calls computePathLoss -> computeIndoorFactory)
+    double attenuation = NrChannelModel::getAttenuation(nodeId, dir, coord, cqiDl);
+
+    // 2. Only apply stochastic blockage if in an Indoor Factory scenario
+    if (scenario_ == INDOOR_FACTORY_SL || scenario_ == INDOOR_FACTORY_DL ||
+        scenario_ == INDOOR_FACTORY_SH || scenario_ == INDOOR_FACTORY_DH || scenario_ == INDOOR_FACTORY_HH)
+    {
+        omnetpp::simtime_t currentTime = omnetpp::simTime();
+
+        // Initialize state if UE not seen before
+        if (blockageStateMap_.find(nodeId) == blockageStateMap_.end()) {
+            double steadyStateProbBlocked = lambda_U_B_ / (lambda_U_B_ + lambda_B_U_);
+            bool initBlocked = (uniform(0.0, 1.0) < steadyStateProbBlocked);
+            blockageStateMap_[nodeId] = std::make_pair(currentTime, initBlocked);
+        }
+        else {
+            omnetpp::simtime_t lastTime = blockageStateMap_[nodeId].first;
+            double dt = (currentTime - lastTime).dbl(); // Time delta in seconds
+
+            if (dt > 0.0) {
+                bool isBlocked = blockageStateMap_[nodeId].second;
+
+                if (isBlocked) {
+                    // Probability of clearing the blockage
+                    double probTransitionToU = 1.0 - exp(-lambda_B_U_ * dt);
+                    if (uniform(0.0, 1.0) < probTransitionToU) {
+                        isBlocked = false;
+                    }
+                }
+                else {
+                    // Probability of getting blocked
+                    double probTransitionToB = 1.0 - exp(-lambda_U_B_ * dt);
+                    if (uniform(0.0, 1.0) < probTransitionToB) {
+                        isBlocked = true;
+                    }
+                }
+                // Update state
+                blockageStateMap_[nodeId] = std::make_pair(currentTime, isBlocked);
+            }
+        }
+
+        // 3. Apply the Penalty
+        if (blockageStateMap_[nodeId].second == true) {
+            attenuation += blockageAttenuation_;
+        }
+    }
+
+    return attenuation;
+}
+
 
 void NrChannelModel_3GPP38_901::computeLosProbability(double d, MacNodeId nodeId)
 {

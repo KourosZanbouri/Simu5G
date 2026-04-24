@@ -26,10 +26,20 @@ simple NrChannelModel_3GPP38_901 extends NrChannelModel
         @class("NrChannelModel_3GPP38_901");
 
         bool useBuildingPenetrationLossHighLossModel = default(false);
-        
+
         // Added By Kouros -  configurable InF parameters
         double d_clutter @unit(m) = default(10m);
         double clutter_density_r = default(0.9);
         double hClutter @unit(m) = default(1.0m);
         double ceilingHeight @unit(m) = default(10m);
+
+        // Rate at which an Unblocked channel becomes Blocked (e.g., 2.0 events/sec)
+        double lambda_U_B = default(2.0);
+        // Rate at which a Blocked channel becomes Unblocked (e.g., 5.0 events/sec)
+        // Note: A higher B_U rate means blockages clear quickly.
+        double lambda_B_U = default(5.0);
+        // The severe attenuation penalty applied when blocked
+        double blockageAttenuation @unit(dB) = default(20dB);
+
+        ////////////////////////////////////////////////////////
 }
